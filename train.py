@@ -15,11 +15,15 @@ encoder = Conv2D(16, (3, 3), activation='relu', padding='same')(encoder)
 encoder = MaxPooling2D(pool_size=(2, 2))(encoder)
 encoder = Conv2D(8, (3, 3), activation='relu', padding='same')(encoder)
 encoder = MaxPooling2D(pool_size=(2, 2))(encoder)
+encoder = Conv2D(8, (3, 3), activation='relu', padding='same')(encoder)
+encoder = MaxPooling2D(pool_size=(5, 5))(encoder)
 
 flatten = Flatten(name='encoded_flat')(encoder)
-flatten = Reshape((25, 25, 8))(flatten)
+flatten = Reshape((5, 5, 8))(flatten)
 
 decoder = Conv2D(8, (3, 3), activation='relu', padding='same')(flatten)
+decoder = UpSampling2D((5,5))(decoder)
+decoder = Conv2D(8, (3, 3), activation='relu', padding='same')(decoder)
 decoder = UpSampling2D((2,2))(decoder)
 decoder = Conv2D(16, (3, 3), activation='relu', padding='same')(decoder)
 decoder = UpSampling2D((2,2))(decoder)
@@ -33,6 +37,7 @@ autoencoder.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accu
 # model.compile(optimizer='adadelta', loss='mean_squared_error', metrics=['accuracy'])
 autoencoder.summary()
 
+# https://keras.io/getting-started/faq/#how-can-i-obtain-the-output-of-an-intermediate-layer
 ## Use same network but stop at flattened encoded layer to extract
 encoder = Model(inputs=autoencoder.input, outputs=autoencoder.get_layer('encoded_flat').output)
 
@@ -48,8 +53,10 @@ all_img = mycoco.iter_images(all_ids, [None])
         
 all_only_img = only_img_iter(all_img)
 
-csv_logger = CSVLogger('./autoencoder.csv', append=True, separator=',')
-filepath="/scratch/gussteen/autoencoder/autoencoder.best.hdf5"
+csv_logger = CSVLogger('./autoencoder_2.csv', append=True, separator=',')
+filepath="/scratch/gussteen/autoencoder/autoencoder_2.best.hdf5"
 checkpoint = ModelCheckpoint(filepath, monitor='acc', verbose=1, save_best_only=True, mode='max')
-autoencoder.fit_generator(all_only_img, steps_per_epoch=10000, epochs=50, callbacks=[checkpoint, csv_logger])
-autoencoder.save('./autoencoder.model.hdf5')
+autoencoder.fit_generator(all_only_img, steps_per_epoch=10000, epochs=50, verbose=2, callbacks=[checkpoint, csv_logger])
+autoencoder.save('./models/autoencoder_2.model.hdf5')
+# I think it is better to just save the autoencoder and extra the layer later.
+encoder.save('./models/encoder_2.model.hdf5')
